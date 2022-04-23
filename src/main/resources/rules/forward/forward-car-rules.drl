@@ -1,0 +1,278 @@
+//created on: 29/09/2019
+package forwardCarRules
+
+//list any import classes here.
+import model.Motor;
+import model.ResultadoDiagnosticoPreliminar;
+import model.Arranque;
+import model.Bateria;
+import model.TanqueCombustible;
+import model.Fuerza;
+import model.DiagnosticoMotor;
+import model.Automovil;
+import model.NivelCombustible;
+import model.NivelBateria;
+import model.ResultadoDiagnosticoMotor;
+import model.AccionRecomendada;
+//declare any global variables here
+
+// IMPORTANTE Atributos de los conceptos deben ser publicos para que la base de conocimiento pueda detectar cambios realizados con los seters
+
+/* IMPORTANTE Debemos ser conscientes de la propagacion de modificaciones de hechos con modify/update. 
+
+Esto se debe porque cuando propagamos modificaciones en el encadenamiento se habilitan los atributos ya revisados, 
+lo que produce podemos producir loops infinitos si la condicion se sigue cumpliendo.
+
+Ver variantes en este archivo aplicar segun corresponda:
+1) Parametros de control: Atributos que marcan en que fase del conocimiento estrategico estan. Se deben usar para pasar de fase en fase en el encadenamiento.
+2) Valores por default en antecedentes. Una vez que se disparo la regla ya no se cumplen lo que evita que la regla no se vuelva a activar para modificarlo.
+3) Parametro no-loop true. Se utiliza cuando modificamos multiples variables en el consecuente. Su uso se recomienda para evitar poner todos los param por default en el antecedente. 
+3.1) PROBLEMA no-loop true: Solo sirve para evitar loops en una misma regla. Si una regla R1 tiene no-loop true y una regla R2 modifica que el mismo concepto la R1 que se habia activado, vuelve a ciclar.
+3.2) Uso de no-loop true. Ver siguiente link para ver su utilizacion */
+
+// Profundizar Manejo de loops infinito en drools:"
+// https://ilesteban.wordpress.com/2012/11/16/about-drools-and-infinite-execution-loops/
+
+rule "R01 - Nivel Bateria Baja"
+	when
+    	$automovil: Automovil(
+    		bateria.cargaPorcentual <= 30,
+        	 // Agregar valor por default de los valores que vamos a modificar para evitar loops infinitos de la misma regla
+        	recomendacion.diagnosticoPreliminar.nivelBateria.isa(NivelBateria.NoDeterminado) 
+        )
+    then
+    	modify($automovil) {
+    	   // el atributo que modifico debe ser publico en la recomendacion para que la base de hechos pueda acceder y detectar la modificacion
+    	   recomendacion.diagnosticoPreliminar.setNivelBateria(NivelBateria.Bajo); 
+    	}
+end
+
+rule "R02 - Nivel Bateria Medio"
+	when
+    	$automovil: Automovil(
+    		bateria.cargaPorcentual > 30,
+    		bateria.cargaPorcentual <= 70,
+        	// Agregar valor por default de los valores que vamos a modificar para evitar loops infinitos de la misma regla
+            recomendacion.diagnosticoPreliminar.nivelBateria.isa(NivelBateria.NoDeterminado) 
+        )
+    then
+    	modify($automovil) {
+    	   // el atributo que modifico debe ser publico en la recomendacion para que la base de hechos pueda acceder y detectar la modificacion
+    	   recomendacion.diagnosticoPreliminar.setNivelBateria(NivelBateria.Medio); 
+    	}
+end
+
+rule "R03 - Nivel Bateria Alto"
+	when
+    	$automovil: Automovil(
+    		bateria.cargaPorcentual > 70,
+        	 // Agregar valor por default de los valores que vamos a modificar para evitar loops infinitos de la misma regla
+        	 recomendacion.diagnosticoPreliminar.nivelBateria.isa(NivelBateria.NoDeterminado)  
+        )
+    then
+    	modify($automovil) {
+    	   // el atributo que modifico debe ser publico en el corecomendacion que la base de hechos pueda acceder y detectar la modificacion
+    	   recomendacion.diagnosticoPreliminar.setNivelBateria(NivelBateria.Alto); 
+    	}
+end
+
+rule "R04 - Nivel Combustible Vacio"
+	when
+    	$automovil: Automovil(
+    		tanque.cargaLts == 0.0,
+        	 // Agregar valor por default de los valores que vamos a modificar para evitar loops infinitos de la misma regla
+        	recomendacion.diagnosticoPreliminar.nivelCombustible.isa(NivelCombustible.NoDeterminado) 
+        )
+    then
+    	modify($automovil) {
+    	   // el atributo que modifico debe ser publico en la recomendacion para que la base de hechos pueda acceder y detectar la modificacion
+    	   recomendacion.diagnosticoPreliminar.setNivelCombustible(model.NivelCombustible.Vacio); 
+    	}
+end
+
+rule "R05 - Nivel Combustible Bajo"
+	when
+    	$automovil: Automovil(
+    		tanque.cargaLts > 0,
+    		tanque.cargaLts <= 10,
+    		// Agregar valor por default de los valores que vamos a modificar para evitar loops infinitos de la misma regla
+    		recomendacion.diagnosticoPreliminar.nivelCombustible.isa(NivelCombustible.NoDeterminado) 
+        )
+    then
+    	modify($automovil) {
+    	   // el atributo que modifico debe ser publico en la recomendacion para que la base de hechos pueda acceder y detectar la modificacion
+    	   recomendacion.diagnosticoPreliminar.setNivelCombustible(model.NivelCombustible.Bajo); 
+    	}
+end
+
+rule "R06 - Nivel Combustible Medio"
+	when
+    	$automovil: Automovil(
+    		tanque.cargaLts > 10,
+    		tanque.cargaLts <= 40,
+        	 // Agregar valor por default de los valores que vamos a modificar para evitar loops infinitos de la misma regla
+        	recomendacion.diagnosticoPreliminar.nivelCombustible.isa(NivelCombustible.NoDeterminado) 
+        )
+    then
+    	modify($automovil) {
+    	   // el atributo que modifico debe ser publico en la recomendacion para que la base de hechos pueda acceder y detectar la modificacion
+    	   recomendacion.diagnosticoPreliminar.setNivelCombustible(model.NivelCombustible.Medio); 
+    	}
+end
+
+rule "R07 - Nivel Combustible Alto"
+	when
+    	$automovil: Automovil(
+    		tanque.cargaLts > 40,
+    		tanque.cargaLts <= 59.999,
+        	 // Agregar valor por default de los valores que vamos a modificar para evitar loops infinitos de la misma regla
+        	recomendacion.diagnosticoPreliminar.nivelCombustible.isa(NivelCombustible.NoDeterminado) 
+        )
+    then
+    	modify($automovil) {
+    	   // el atributo que modifico debe ser publico en la recomendacion para que la base de hechos pueda acceder y detectar la modificacion
+    	   recomendacion.diagnosticoPreliminar.setNivelCombustible(NivelCombustible.Alto); 
+    	}
+end
+
+rule "R08 - Nivel Combustible Completo"
+	when
+    	$automovil: Automovil(
+    		tanque.cargaLts == 60.0,
+        	 // Agregar valor por default de los valores que vamos a modificar para evitar loops infinitos de la misma regla
+        	recomendacion.diagnosticoPreliminar.nivelCombustible.isa(NivelCombustible.NoDeterminado) 
+        )
+    then
+    	modify($automovil) {
+    	  // el atributo que modifico debe ser publico en la recomendacion para que la base de hechos pueda acceder y detectar la modificacion
+    	   recomendacion.diagnosticoPreliminar.setNivelCombustible(NivelCombustible.Completo); 
+    	}
+end
+
+rule "R09 - Diagnostico preliminar bateria baja para arrancar"
+	when
+    	$automovil: Automovil(
+    		recomendacion.diagnosticoPreliminar.nivelBateria.isa(NivelBateria.Bajo),
+    		motor.arranque.isa(Arranque.NoGira),
+    		// Agregar valor por default de los valores que vamos a modificar para evitar loops infinitos de la misma regla
+    		recomendacion.diagnosticoPreliminar.resultado.isa(ResultadoDiagnosticoPreliminar.NoDeterminado)
+        )
+    then
+    	modify($automovil) {
+    	   // el atributo que modifico debe ser publico en la recomendacion para que la base de hechos pueda acceder y detectar la modificacion
+    	   recomendacion.diagnosticoPreliminar.setResultado(ResultadoDiagnosticoPreliminar.BateriaBaja); 
+    	}
+end
+
+rule "R10 - Diagnostico preliminar no hay combustible para arrancar"
+	when
+    	$automovil: Automovil(
+    		recomendacion.diagnosticoPreliminar.nivelCombustible.isa(NivelCombustible.Vacio),
+    		 // Agregar valor por default de los valores que vamos a modificar para evitar loops infinitos de la misma regla
+    		recomendacion.diagnosticoPreliminar.resultado.isa(ResultadoDiagnosticoPreliminar.NoDeterminado)
+        )
+    then
+    	modify($automovil) {
+    	   // el atributo que modifico debe ser publico en la recomendacion para que la base de hechos pueda acceder y detectar la modificacion
+    	   recomendacion.diagnosticoPreliminar.setResultado(ResultadoDiagnosticoPreliminar.FaltaCombustible); 
+    	}
+end
+
+rule "R11 - Diagnostico motor Tuberias de combustible sucias"
+	when
+    	$automovil: Automovil(
+    		motor.fuerza.isa(Fuerza.Debil),
+    		 // Agregar valor por default de los valores que vamos a modificar para evitar loops infinitos de la misma regla
+    		recomendacion.diagnosticoMotor.resultadoFinal.isa(ResultadoDiagnosticoMotor.NoDeterminado)
+        )
+    then
+    	modify($automovil) {
+    	   // el atributo que modifico debe ser publico en la recomendacion para que la base de hechos pueda acceder y detectar la modificacion
+    	   recomendacion.diagnosticoMotor.setResultadoFinal(ResultadoDiagnosticoMotor.TuberiasDeCombustibleSucias); 
+    	}
+end
+
+rule "R12 - Diagnostico motor Puntos de Inyeccion desajustados"
+	when
+    	$automovil: Automovil(
+    		motor.presentaExplosiones == true,
+    		 // Agregar valor por default de los valores que vamos a modificar para evitar loops infinitos de la misma regla
+    		recomendacion.diagnosticoMotor.resultadoFinal.isa(ResultadoDiagnosticoMotor.NoDeterminado)
+        	
+        )
+    then
+    	modify($automovil) {
+    	  // el atributo que modifico debe ser publico en la recomendacion para que la base de hechos pueda acceder y detectar la modificacion
+    	   recomendacion.diagnosticoMotor.setResultadoFinal(ResultadoDiagnosticoMotor.PuntosDeInyeccionDesajustados); 
+    	}
+end
+
+rule "R13 - Diagnostico motor Timing del motor desajustado"
+	when
+    	$automovil: Automovil(
+    		motor.presentaGolpes  == true,
+    		// Agregar valor por default de los valores que vamos a modificar para evitar loops infinitos de la misma regla
+    		recomendacion.diagnosticoMotor.resultadoFinal.isa(ResultadoDiagnosticoMotor.NoDeterminado)
+        	 
+        )
+    then
+    	modify($automovil) {
+    	  // el atributo que modifico debe ser publico en la recomendacion para que la base de hechos pueda acceder y detectar la modificacion
+    	   recomendacion.diagnosticoMotor.setResultadoFinal(ResultadoDiagnosticoMotor.TimingDelMotorDesajustado); 
+    	}
+end
+
+rule "R14 - Recomendacion Cargar Bateria"
+	when
+    	$automovil: Automovil(
+    		recomendacion.diagnosticoPreliminar.resultado.isa(ResultadoDiagnosticoPreliminar.BateriaBaja),
+        	 // Agregar valor por default de los valores que vamos a modificar para evitar loops infinitos de la misma regla
+        	recomendacion.accion.isa(AccionRecomendada.NoEncontrada)
+        )
+    then
+    	$automovil.recomendacion.setAccion(AccionRecomendada.CargarBateria); 
+end
+
+rule "R15 - Recomendacion Cargar Combustible"
+	when
+    	$automovil: Automovil(
+    		recomendacion.diagnosticoPreliminar.resultado.isa(ResultadoDiagnosticoPreliminar.FaltaCombustible),
+        	 // Agregar valor por default de los valores que vamos a modificar para evitar loops infinitos de la misma regla
+        	recomendacion.accion.isa(AccionRecomendada.NoEncontrada)
+        )
+    then
+    	$automovil.recomendacion.setAccion(AccionRecomendada.CargarCombustible); 
+end
+
+rule "R16 - Recomendacion Limpiar Tuberias de combustible"
+	when
+    	$automovil: Automovil(
+    		recomendacion.diagnosticoMotor.resultadoFinal.isa(ResultadoDiagnosticoMotor.TuberiasDeCombustibleSucias),
+        	 // Agregar valor por default de los valores que vamos a modificar para evitar loops infinitos de la misma regla
+        	recomendacion.accion.isa(AccionRecomendada.NoEncontrada)
+        )
+    then
+    	$automovil.recomendacion.setAccion(AccionRecomendada.LimpiarTuberiasCombustible); 
+end
+
+rule "R17 - Recomendacion Ajustar puntos de inyeccion"
+	when
+    	$automovil: Automovil(
+    		recomendacion.diagnosticoMotor.resultadoFinal.isa(ResultadoDiagnosticoMotor.PuntosDeInyeccionDesajustados),
+        	 // Agregar valor por default de los valores que vamos a modificar para evitar loops infinitos de la misma regla
+        	recomendacion.accion.isa(AccionRecomendada.NoEncontrada)
+        )
+    then
+    	$automovil.recomendacion.setAccion(AccionRecomendada.AjustarPuntosDeInyeccion); 
+end
+
+rule "R18 - Recomendacion Ajustar Timing de motor"
+	when
+    	$automovil: Automovil(
+    		recomendacion.diagnosticoMotor.resultadoFinal.isa(ResultadoDiagnosticoMotor.TimingDelMotorDesajustado),
+        	 // Agregar valor por default de los valores que vamos a modificar para evitar loops infinitos de la misma regla
+        	recomendacion.accion.isa(AccionRecomendada.NoEncontrada)
+        )
+    then
+    	$automovil.recomendacion.setAccion(AccionRecomendada.AjustarTimingMotor); 
+end
